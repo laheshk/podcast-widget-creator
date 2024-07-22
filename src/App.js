@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import Parser from 'rss-parser';
+
+const parser = new Parser();
 
 function App() {
   const [rssUrl, setRssUrl] = useState('');
@@ -18,53 +21,28 @@ function App() {
 
   const fetchPodcastData = async () => {
     try {
-      // In a real application, you would make an API call here
-      // For now, we'll simulate an API call with a timeout
       setError(null);
-      const response = await new Promise((resolve) => 
-        setTimeout(() => resolve({
-          episodes: [
-            {
-              title: "Harriet Johnston (VP of Marketing at Ashby) on Building Effective Marketing Strategies and Teams",
-              date: "Jun 20, 2024",
-              duration: "39:00",
-              episode: "Episode 34",
-              image: "https://picsum.photos/seed/ep34/150"
-            },
-            {
-              title: "John Smith (CTO at TechCorp) on Scaling Engineering Teams",
-              date: "Jun 13, 2024",
-              duration: "45:00",
-              episode: "Episode 33",
-              image: "https://picsum.photos/seed/ep33/150"
-            },
-            {
-              title: "Sarah Lee (CEO of FoodTech) on Innovating in the Food Industry",
-              date: "Jun 6, 2024",
-              duration: "42:00",
-              episode: "Episode 32",
-              image: "https://picsum.photos/seed/ep32/150"
-            },
-            {
-              title: "Mike Johnson (Data Scientist at AI Solutions) on the Future of AI",
-              date: "May 30, 2024",
-              duration: "38:00",
-              episode: "Episode 31",
-              image: "https://picsum.photos/seed/ep31/150"
-            }
-          ]
-        }), 1000)
-      );
-      setPodcastData(response);
+      const CORS_PROXY = "https://cors-anywhere.herokuapp.com/";
+      const feed = await parser.parseURL(CORS_PROXY + rssUrl);
+      
+      const episodes = feed.items.map(item => ({
+        title: item.title,
+        date: new Date(item.pubDate).toLocaleDateString(),
+        duration: item.itunes?.duration || 'N/A',
+        episode: item.itunes?.episode || 'N/A',
+        image: item.itunes?.image || feed.image?.url || 'https://via.placeholder.com/150'
+      }));
+
+      setPodcastData({ episodes });
     } catch (err) {
-      setError('Failed to fetch podcast data. Please try again.');
+      setError('Failed to fetch podcast data. Please check the URL and try again.');
       console.error('Error fetching podcast data:', err);
     }
   };
 
   const generateIframeCode = () => {
     const encodedStyle = encodeURIComponent(JSON.stringify(style));
-    const widgetUrl = process.env.REACT_APP_WIDGET_URL || 'https://example.com/widget';
+    const widgetUrl = process.env.REACT_APP_WIDGET_URL || window.location.origin;
     const code = `<iframe src="${widgetUrl}?rss=${encodeURIComponent(rssUrl)}&style=${encodedStyle}" width="600" height="800" frameborder="0"></iframe>`;
     setIframeCode(code);
   };
@@ -84,7 +62,7 @@ function App() {
           type="text"
           value={rssUrl}
           onChange={(e) => setRssUrl(e.target.value)}
-          placeholder="https://example.com/podcast-rss"
+          placeholder="Enter your podcast RSS feed URL"
           style={{ width: '100%', padding: '5px' }}
         />
       </div>
@@ -200,7 +178,7 @@ function App() {
                 <img src={episode.image} alt={episode.title} style={{ width: '100px', height: '100px', marginRight: `${style.gap}px` }} />
                 <div style={{ flex: 1 }}>
                   <div style={{ color: style.dateColor, fontSize: `${style.dateSize}px`, marginBottom: `${style.gap/2}px` }}>
-                    {episode.episode} • {episode.date} • {episode.duration}
+                    {episode.episode !== 'N/A' ? `Episode ${episode.episode} • ` : ''}{episode.date} • {episode.duration}
                   </div>
                   <h3 style={{ color: style.titleColor, fontSize: `${style.titleSize}px`, margin: 0 }}>{episode.title}</h3>
                 </div>
